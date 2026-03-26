@@ -19,7 +19,7 @@ Dataset/**/dataset/
 
 # Fully generated combined dataset
 Dataset/all_combined/
-
+PeerRead/
 # ===== Keep these (required for feature engineering) =====
 # reviews/     — source data (paper metadata + reviewer scores)
 # parsed_pdfs/ — ScienceParse JSON output (sections, refs, etc.)

@@ -25,7 +25,7 @@ for split in ["train", "dev", "test"]:
     os.makedirs(f"Dataset/all_combined/{split}/dataset", exist_ok=True)
 
 # 2. Iterate through splits and extract features
-for split in ["train"]:
+for split in ["dev", "test", "train"]:
     print(f"\n--- Extracting Features for {split.upper()} split ---")
     paper_json_dirs = []
     scienceparse_dirs = []
