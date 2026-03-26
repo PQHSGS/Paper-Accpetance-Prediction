@@ -24,8 +24,13 @@ submission_year = "2017" # Dummy value not really used strongly in scripts
 for split in ["train", "dev", "test"]:
     os.makedirs(f"Dataset/all_combined/{split}/dataset", exist_ok=True)
 
+# Always rebuild train feature map first so newly added features are registered.
+train_feature_vocab_file = f"Dataset/all_combined/train/dataset/features_{all_vocab}_{encoder}_{hand}.dat"
+if os.path.isfile(train_feature_vocab_file):
+    os.remove(train_feature_vocab_file)
+
 # 2. Iterate through splits and extract features
-for split in ["dev", "test", "train"]:
+for split in ["train", "dev", "test"]:
     print(f"\n--- Extracting Features for {split.upper()} split ---")
     paper_json_dirs = []
     scienceparse_dirs = []
@@ -38,7 +43,7 @@ for split in ["dev", "test", "train"]:
             scienceparse_dirs.append(sp_dir)
             
     out_dir = f"Dataset/all_combined/{split}/dataset"
-    feature_vocab_file = f"Dataset/all_combined/train/dataset/features_{all_vocab}_{encoder}_{hand}.dat"
+    feature_vocab_file = train_feature_vocab_file
     vector_vocab_file = f"Dataset/all_combined/train/dataset/vectors_{all_vocab}_{encoder}.txt"
     
     args = [
