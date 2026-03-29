@@ -244,11 +244,3 @@ class Paper:
 
   def get_date_of_submission(self):
     return self.DATE_OF_SUBMISSION
-
-def main(args):
-  papers = Paper.from_softconf_dump('../../data/conll16/reviews.json')
-  for paper in papers:
-    paper.to_json('../../data/conll16_new/{}.json'.format(paper.ID))
-
-if __name__ == "__main__":
-  sys.exit(main(sys.argv))

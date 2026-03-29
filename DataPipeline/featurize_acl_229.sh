@@ -1,25 +1,10 @@
 #!/bin/bash
 
-DDIR=../Dataset
-DATADIR=("$DDIR/acl_2017")
-DATASETS=("train" "dev" "test")
-FEATDIR=dataset
-MAX_VOCAB=False
-ENCODER="w2v"
-HAND=True
+set -euo pipefail
 
-# 1) extract features
-for DATASET in "${DATASETS[@]}"
-do
-  echo "Extracting feautures..." DATA=$DATADIR DATASET=$DATASET ENCODER=$ENCODER ALL_VOCAB=$MAX_VOCAB HAND_FEATURE=$HAND
-  rm -rf $DATADIR/$DATASET/$FEATDIR
-  python3 feature_engineering.py \
-    $DATADIR/$DATASET/reviews/ \
-    $DATADIR/$DATASET/parsed_pdfs/ \
-    $DATADIR/$DATASET/$FEATDIR \
-    $DATADIR/train/$FEATDIR/features_${MAX_VOCAB}_${ENCODER}_${HAND}.dat \
-    $DATADIR/train/$FEATDIR/vect_${MAX_VOCAB}_${ENCODER}_${HAND}.pkl \
-    $MAX_VOCAB $ENCODER $HAND
-  echo
-done
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_PATH="${1:-$SCRIPT_DIR/../pipeline_config.json}"
+
+echo "Running config-driven extraction with $CONFIG_PATH"
+python3 "$SCRIPT_DIR/../run_combined_extraction.py" "$CONFIG_PATH"
 

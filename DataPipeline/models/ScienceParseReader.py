@@ -3,9 +3,14 @@ import sys
 
 import sys,io
 import json, glob
-from models.Review import Review
-from models.Paper import Paper
-from models.ScienceParse import ScienceParse
+try:
+  from .Review import Review
+  from .Paper import Paper
+  from .ScienceParse import ScienceParse
+except ImportError:
+  from models.Review import Review
+  from models.Paper import Paper
+  from models.ScienceParse import ScienceParse
 
 class ScienceParseReader:
   """

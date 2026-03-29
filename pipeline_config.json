@@ -1,0 +1,46 @@
+{
+  "DataConfig": {
+    "base_dir": "Dataset",
+    "combined_name": "all_combined",
+    "datasets": [
+      "acl_2017",
+      "iclr_2017",
+      "arxiv.cs.ai_2007-2017",
+      "arxiv.cs.cl_2007-2017",
+      "arxiv.cs.lg_2007-2017",
+      "conll_2016"
+    ],
+    "splits": ["train", "dev", "test"],
+    "reviews_subdir": "reviews",
+    "parsed_subdir": "parsed_pdfs",
+    "output_subdir": "dataset"
+  },
+  "PreprocessConfig": {
+    "only_char": true,
+    "lower": true,
+    "stop_remove": true,
+    "hfw_proportion": 0.01,
+    "freq_proportion": 0.05,
+    "min_freq_threshold": 3
+  },
+  "FeatureConfig": {
+    "max_vocab": false,
+    "encoder_type": "w2v",
+    "use_hand_features": true,
+    "allow_recommendation_fallback": true,
+    "recommendation_threshold": 3.5,
+    "drop_post_review_leakage": true,
+    "preserve_corpus_cache": true,
+    "shuffle_seed": 42
+  },
+  "TrainingConfig": {
+    "enabled": true,
+    "data_dir": null,
+    "standardize_linear_models": true,
+    "threshold_min": 0.2,
+    "threshold_max": 0.8,
+    "threshold_steps": 25,
+    "use_probability_midpoints": true,
+    "ensemble_top_k": 3
+  }
+}

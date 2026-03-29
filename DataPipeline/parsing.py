@@ -2,8 +2,12 @@ import os
 import glob
 from typing import List
 
-from models.Paper import Paper
-from models.ScienceParseReader import ScienceParseReader
+try:
+    from .models.Paper import Paper
+    from .models.ScienceParseReader import ScienceParseReader
+except ImportError:
+    from models.Paper import Paper
+    from models.ScienceParseReader import ScienceParseReader
 
 def load_papers_from_dir(paper_json_dir: str, scienceparse_dir: str) -> List[Paper]:
     """

@@ -25,8 +25,8 @@
   - `conda activate ml`
   - If running in a non-interactive shell: `source /mnt/disk1/miniconda3/etc/profile.d/conda.sh && conda activate ml`
 - Main commands:
-  - `python run_combined_extraction.py`
-  - `python train_models.py`
+  - `python run_combined_extraction.py pipeline_config.json`
+  - `python train_models.py pipeline_config.json`
 - Dataset assumptions:
   - Per source dataset: `Dataset/<name>/{train,dev,test}/{reviews,parsed_pdfs}`
   - Combined output: `Dataset/all_combined/{train,dev,test}/dataset`
@@ -60,7 +60,8 @@
 ## Key Files
 - `run_combined_extraction.py`
 - `train_models.py`
-- `DataPipeline/feature_engineering.py`
+- `DataPipeline/config.py`
+- `DataPipeline/feature_pipeline.py`
 - `DataPipeline/feature_extraction.py`
 - `Models/base.py`
 - `Models/decision_tree.py`
