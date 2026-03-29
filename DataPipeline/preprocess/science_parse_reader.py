@@ -1,16 +1,8 @@
 # encoding=utf8
-import sys
+import io
+import json
 
-import sys,io
-import json, glob
-try:
-  from .Review import Review
-  from .Paper import Paper
-  from .ScienceParse import ScienceParse
-except ImportError:
-  from models.Review import Review
-  from models.Paper import Paper
-  from models.ScienceParse import ScienceParse
+from ..domain.ScienceParse import ScienceParse
 
 class ScienceParseReader:
   """

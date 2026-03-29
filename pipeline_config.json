@@ -16,6 +16,10 @@
     "output_subdir": "dataset"
   },
   "PreprocessConfig": {
+    "methods": [
+      "build_corpus_words",
+      "compute_frequency_buckets"
+    ],
     "only_char": true,
     "lower": true,
     "stop_remove": true,
@@ -24,6 +28,9 @@
     "min_freq_threshold": 3
   },
   "FeatureConfig": {
+    "methods": [
+      "handcrafted_features"
+    ],
     "max_vocab": false,
     "encoder_type": "w2v",
     "use_hand_features": true,

@@ -1,17 +1,23 @@
-from typing import Tuple, Set, List, Dict, Any
 from collections import Counter
+from typing import TYPE_CHECKING, Any, Dict, List, Set, Tuple
+
 import numpy as np
+
+if TYPE_CHECKING:
+    from ..config.feature import FeatureConfig
+    from ..pipeline_data import ProcessData
+
 
 def count_words(corpus: List[str], hfw_proportion: float, freq_proportion: float, min_freq_thr: int) -> Tuple[List[str], Set[str], Set[str]]:
     """
-    Counts words in a corpus and returns high-frequency words, 
+    Counts words in a corpus and returns high-frequency words,
     moderate-frequency words, and least-frequent words.
     """
     counter = Counter(corpus)
     n_hfw = int(len(counter) * hfw_proportion)
     n_combined = int(len(counter) * (hfw_proportion + freq_proportion))
-    
-    # Single most_common call with the larger limit
+
+    # Single most_common call with the larger limit.
     top_combined = counter.most_common(n_combined)
     most_common_set = set(x[0] for x in top_combined[:n_hfw])
     most_common = [x[0] for x in top_combined[:n_hfw]]
@@ -19,22 +25,23 @@ def count_words(corpus: List[str], hfw_proportion: float, freq_proportion: float
 
     most_frequent_words = most_common2_set - most_common_set
     least_frequent_words = set(w for w, c in counter.items() if c < min_freq_thr)
-            
+
     return most_common, most_frequent_words, least_frequent_words
+
 
 def extract_hand_features(paper: Any, science_parse: Any, hfws: List[str], freq_words: Set[str], infreq_words: Set[str]) -> Dict[str, float]:
     """
     Extracts hand-crafted features from a paper and its parsed contents using the dictionary format.
-    
+
     Args:
-        paper (Any): The instantiated Paper model.
-        science_parse (Any): The ScienceParse model.
-        hfws (List[str]): High frequency words list.
-        freq_words (Set[str]): Moderate frequency words.
-        infreq_words (Set[str]): Low frequency words.
-        
+        paper: The instantiated Paper model.
+        science_parse: The ScienceParse model.
+        hfws: High frequency words list.
+        freq_words: Moderate frequency words.
+        infreq_words: Low frequency words.
+
     Returns:
-        Dict[str, float]: Mapping of feature names to values.
+        Mapping of feature names to values.
     """
     num_references = science_parse.get_num_references()
     num_refmentions = science_parse.get_num_refmentions()
@@ -121,3 +128,19 @@ def extract_hand_features(paper: Any, science_parse: Any, hfws: List[str], freq_
         "recent_refs_x_novel": num_recent_references * int(paper.abstract_contains_a_term("novel")),
     }
     return features
+
+
+def handcrafted_features(
+    paper: Any,
+    process_data: "ProcessData",
+    feature_config: "FeatureConfig",
+) -> Dict[str, float]:
+    """Registry-friendly wrapper for the current handcrafted feature extractor."""
+    _ = feature_config
+    return extract_hand_features(
+        paper,
+        paper.SCIENCEPARSE,
+        process_data.hfws,
+        process_data.most_frequent_words,
+        process_data.least_frequent_words,
+    )

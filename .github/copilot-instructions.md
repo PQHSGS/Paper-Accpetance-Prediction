@@ -60,8 +60,8 @@
 ## Key Files
 - `run_combined_extraction.py`
 - `train_models.py`
-- `DataPipeline/config.py`
-- `DataPipeline/feature_pipeline.py`
-- `DataPipeline/feature_extraction.py`
+- `DataPipeline/config/pipeline_config.py`
+- `DataPipeline/config/feature_pipeline.py`
+- `DataPipeline/feature/feature_extraction.py`
 - `Models/base.py`
 - `Models/decision_tree.py`

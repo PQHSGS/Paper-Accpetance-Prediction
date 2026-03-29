@@ -1,24 +1,16 @@
 import os
-import pickle as pkl
-import random
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
 from sklearn.datasets import load_svmlight_file
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, precision_score, recall_score
 
-try:
-    from .config import Config
-    from .feature_extraction import count_words, extract_hand_features
-    from .normalization import normalize_text
-    from .parsing import load_papers_from_dir
-    from .reporting import read_features, save_features_to_file, write_svmlite_row
-except ImportError:
-    from config import Config
-    from feature_extraction import count_words, extract_hand_features
-    from normalization import normalize_text
-    from parsing import load_papers_from_dir
-    from reporting import read_features, save_features_to_file, write_svmlite_row
+from .pipeline_config import PipelineConfig
+from ..feature import get_feature_methods
+from ..feature.reporting import read_features, save_features_to_file, write_svmlite_row
+from ..pipeline_data import FeaturedData, ProcessData
+from ..preprocess import get_preprocess_methods
+from ..preprocess.parsing import load_papers_from_dir
 from Models import (
     AdaBoostClassifier,
     GradientBoostingClassifier,
@@ -26,7 +18,6 @@ from Models import (
     RandomForestClassifier,
     SVMClassifier,
 )
-
 
 _POST_REVIEW_LEAKAGE_TOKENS = {
     "recommendation",
@@ -108,56 +99,21 @@ class LabelResolver:
             "No explicit accepted label and no accepted-title mapping."
         )
 
-    def label_dataset(self, raw_dataset_papers: Sequence[Any], accepted_titles: Set[str]) -> Tuple[List[Any], Dict[str, int], int]:
-        labeled: List[Any] = []
-        skipped_unlabeled = 0
-        label_src_counts = {
-            "json.accepted": 0,
-            "acl_accepted.txt": 0,
-            "review.recommendation>=threshold": 0,
-        }
-
-        for p in raw_dataset_papers:
-            try:
-                label, src = self.resolve_label(p, accepted_titles)
-            except ValueError:
-                skipped_unlabeled += 1
-                continue
-
-            p.ACCEPTED = bool(label)
-            label_src_counts[src] += 1
-            labeled.append(p)
-
-        return labeled, label_src_counts, skipped_unlabeled
-
 
 class FeaturePipeline:
-    def __init__(self, config: Config):
+    def __init__(self, config: PipelineConfig):
         self.config = config
         self.label_resolver = LabelResolver(
             allow_recommendation_fallback=self.config.feature.allow_recommendation_fallback,
             recommendation_threshold=self.config.feature.recommendation_threshold,
         )
         self.id_to_feature: Dict[str, int] = {}
-        self.hfws: List[str] = []
-        self.most_frequent_words: Set[str] = set()
-        self.least_frequent_words: Set[str] = set()
-        self.is_fitted = False
+        self.is_feature_fitted = False
 
     @staticmethod
     def _is_post_review_leakage_feature(feature_name: str) -> bool:
         lname = feature_name.lower()
         return any(tok in lname for tok in _POST_REVIEW_LEAKAGE_TOKENS)
-
-    def _artifact_paths(self, split_out_dir: str) -> Dict[str, str]:
-        max_vocab = self.config.feature.max_vocab_token
-        encoder = self.config.feature.encoder_token
-        hand = self.config.feature.hand_token
-        return {
-            "labels": os.path.join(split_out_dir, f"labels_{max_vocab}_{encoder}_{hand}.tsv"),
-            "ids": os.path.join(split_out_dir, f"ids_{max_vocab}_{encoder}_{hand}.tsv"),
-            "svmlite": os.path.join(split_out_dir, f"features.svmlite_{max_vocab}_{encoder}_{hand}.txt"),
-        }
 
     def _feature_map_path(self) -> str:
         max_vocab = self.config.feature.max_vocab_token
@@ -170,8 +126,25 @@ class FeaturePipeline:
         )
         return os.path.join(train_out_dir, f"features_{max_vocab}_{encoder}_{hand}.dat")
 
-    def _load_split_papers(self, split: str) -> List[Any]:
+    def _artifact_paths(self, split_out_dir: str) -> Dict[str, str]:
+        max_vocab = self.config.feature.max_vocab_token
+        encoder = self.config.feature.encoder_token
+        hand = self.config.feature.hand_token
+        return {
+            "labels": os.path.join(split_out_dir, f"labels_{max_vocab}_{encoder}_{hand}.tsv"),
+            "ids": os.path.join(split_out_dir, f"ids_{max_vocab}_{encoder}_{hand}.tsv"),
+            "svmlite": os.path.join(split_out_dir, f"features.svmlite_{max_vocab}_{encoder}_{hand}.txt"),
+        }
+
+    def load_data(self, split: str) -> ProcessData:
         papers: List[Any] = []
+        label_source_counts = {
+            "json.accepted": 0,
+            "acl_accepted.txt": 0,
+            "review.recommendation>=threshold": 0,
+        }
+        skipped_unlabeled = 0
+
         data_cfg = self.config.data
         print(f"Loading split={split} from {len(data_cfg.datasets)} datasets...")
         for idx, dataset_name in enumerate(data_cfg.datasets, start=1):
@@ -183,125 +156,141 @@ class FeaturePipeline:
 
             raw_dataset_papers = load_papers_from_dir(p_dir, s_dir)
             accepted_titles = self.label_resolver.load_accepted_titles(os.path.join(data_cfg.base_dir, dataset_name))
-            dataset_papers, label_src_counts, skipped_unlabeled = self.label_resolver.label_dataset(
-                raw_dataset_papers=raw_dataset_papers,
-                accepted_titles=accepted_titles,
-            )
+
+            dataset_papers: List[Any] = []
+            dataset_label_src_counts = {
+                "json.accepted": 0,
+                "acl_accepted.txt": 0,
+                "review.recommendation>=threshold": 0,
+            }
+            dataset_skipped = 0
+            for p in raw_dataset_papers:
+                try:
+                    label, src = self.label_resolver.resolve_label(p, accepted_titles)
+                except ValueError:
+                    dataset_skipped += 1
+                    continue
+
+                p.ACCEPTED = bool(label)
+                dataset_label_src_counts[src] += 1
+                dataset_papers.append(p)
+
             papers.extend(dataset_papers)
+            skipped_unlabeled += dataset_skipped
+            for key, value in dataset_label_src_counts.items():
+                label_source_counts[key] += value
+
             print(
                 f"  Dataset {idx}/{len(data_cfg.datasets)} {dataset_name}: "
                 f"{len(dataset_papers)}/{len(raw_dataset_papers)} papers | "
-                f"label_source={label_src_counts} | skipped_unlabeled={skipped_unlabeled}"
+                f"label_source={dataset_label_src_counts} | skipped_unlabeled={dataset_skipped}"
             )
 
-        rng = random.Random(self.config.feature.shuffle_seed)
-        rng.shuffle(papers)
+        rng = np.random.default_rng(self.config.feature.shuffle_seed)
+        if papers:
+            order = rng.permutation(len(papers))
+            papers = [papers[i] for i in order]
+
+        labels = [int(p.get_accepted() is True) for p in papers]
+        titles = [p.get_title() for p in papers]
+
         print(f"Loaded {len(papers)} labeled papers for split={split}.")
-        return papers
-
-    def _compute_corpus_stats(self, papers: Sequence[Any], cache_dir: str) -> None:
-        os.makedirs(cache_dir, exist_ok=True)
-        corpus_path = os.path.join(cache_dir, "corpus.pkl")
-
-        if self.config.feature.preserve_corpus_cache and os.path.exists(corpus_path):
-            corpus_words = pkl.load(open(corpus_path, "rb"))
-        else:
-            corpus_words: List[str] = []
-            for paper in papers:
-                content = paper.SCIENCEPARSE.get_paper_content()
-                norm = normalize_text(
-                    content,
-                    only_char=self.config.preprocess.only_char,
-                    lower=self.config.preprocess.lower,
-                    stop_remove=self.config.preprocess.stop_remove,
-                )
-                corpus_words.extend(norm.split(" "))
-            pkl.dump(corpus_words, open(corpus_path, "wb"))
-
-        self.hfws, self.most_frequent_words, self.least_frequent_words = count_words(
-            corpus_words,
-            self.config.preprocess.hfw_proportion,
-            self.config.preprocess.freq_proportion,
-            self.config.preprocess.min_freq_threshold,
+        return ProcessData(
+            split=split,
+            papers=papers,
+            labels=labels,
+            titles=titles,
+            label_source_counts=label_source_counts,
+            skipped_unlabeled=skipped_unlabeled,
+            metadata={"n_papers": len(papers)},
         )
 
-    def fit(self, papers: Sequence[Any]) -> "FeaturePipeline":
-        train_cache_dir = os.path.join(
+    def preprocess(self, data: ProcessData) -> ProcessData:
+        cache_dir = os.path.join(
             self.config.data.combined_dir,
             "train",
             self.config.data.output_subdir,
         )
-        self._compute_corpus_stats(papers, train_cache_dir)
+        methods = get_preprocess_methods(self.config.preprocess.methods)
+        context = {"cache_dir": cache_dir}
 
-        self.id_to_feature = {}
-        self._vectorize_papers(papers, is_train=True)
-        self.is_fitted = True
-        return self
+        current = data
+        for method in methods:
+            current = method(current, self.config.preprocess, self.config.feature, context)
+        return current
 
-    def _vectorize_papers(self, papers: Sequence[Any], is_train: bool) -> Tuple[List[Dict[int, float]], List[int], List[str], Set[str]]:
-        if not self.config.feature.use_hand_features:
-            return ([{} for _ in papers], [int(p.get_accepted() is True) for p in papers], [p.get_title() for p in papers], set())
+    def featureize(self, data: ProcessData, fit_mode: bool) -> FeaturedData:
+        methods = get_feature_methods(self.config.feature.methods)
+        if fit_mode:
+            self.id_to_feature = {}
+        elif not self.is_feature_fitted:
+            raise RuntimeError("FeaturePipeline is not fitted. Run train split first or call load_feature_map().")
 
         rows: List[Dict[int, float]] = []
-        labels: List[int] = []
-        titles: List[str] = []
         dropped_features: Set[str] = set()
 
-        for paper in papers:
-            labels.append(int(paper.get_accepted() is True))
-            titles.append(paper.get_title())
-            hand_features = extract_hand_features(
-                paper,
-                paper.SCIENCEPARSE,
-                self.hfws,
-                self.most_frequent_words,
-                self.least_frequent_words,
-            )
+        if not self.config.feature.use_hand_features:
+            rows = [{} for _ in data.papers]
+        else:
+            for paper in data.papers:
+                merged_features: Dict[str, float] = {}
+                for method in methods:
+                    method_features = method(paper, data, self.config.feature)
+                    merged_features.update(method_features)
 
-            row: Dict[int, float] = {}
-            for feature_name, value in hand_features.items():
-                if self.config.feature.drop_post_review_leakage and self._is_post_review_leakage_feature(feature_name):
-                    dropped_features.add(feature_name)
-                    continue
+                row: Dict[int, float] = {}
+                for feature_name, value in merged_features.items():
+                    if self.config.feature.drop_post_review_leakage and self._is_post_review_leakage_feature(feature_name):
+                        dropped_features.add(feature_name)
+                        continue
 
-                if is_train and feature_name not in self.id_to_feature:
-                    self.id_to_feature[feature_name] = len(self.id_to_feature)
+                    if fit_mode and feature_name not in self.id_to_feature:
+                        self.id_to_feature[feature_name] = len(self.id_to_feature)
 
-                fid = self.id_to_feature.get(feature_name)
-                if fid is not None and value != 0:
-                    row[fid] = value
-            rows.append(row)
+                    fid = self.id_to_feature.get(feature_name)
+                    if fid is not None and value != 0:
+                        row[fid] = value
+                rows.append(row)
 
-        return rows, labels, titles, dropped_features
+        if fit_mode:
+            self.is_feature_fitted = True
 
-    def transform(self, papers: Sequence[Any]) -> Tuple[List[Dict[int, float]], List[int], List[str], Set[str]]:
-        if not self.is_fitted:
-            raise RuntimeError("Pipeline is not fitted. Call fit() or run_feature_extraction() first.")
-        return self._vectorize_papers(papers, is_train=False)
+        return FeaturedData(
+            split=data.split,
+            rows=rows,
+            labels=list(data.labels),
+            titles=list(data.titles),
+            id_to_feature=dict(self.id_to_feature),
+            dropped_features=dropped_features,
+            metadata=dict(data.metadata),
+        )
 
-    def fit_transform(self, papers: Sequence[Any]) -> Tuple[List[Dict[int, float]], List[int], List[str], Set[str]]:
-        self.fit(papers)
-        return self._vectorize_papers(papers, is_train=True)
+    def transform(self, data: ProcessData) -> FeaturedData:
+        processed = self.preprocess(data)
+        return self.featureize(processed, fit_mode=False)
 
-    def _write_artifacts(self, split_out_dir: str, rows: Sequence[Dict[int, float]], labels: Sequence[int], titles: Sequence[str]) -> Dict[str, str]:
+    def _write_artifacts(self, featured: FeaturedData) -> FeaturedData:
+        split_out_dir = os.path.join(self.config.data.combined_dir, featured.split, self.config.data.output_subdir)
         os.makedirs(split_out_dir, exist_ok=True)
+
         paths = self._artifact_paths(split_out_dir)
         with open(paths["labels"], "w", encoding="utf-8") as out_labels, open(
             paths["ids"], "w", encoding="utf-8"
         ) as out_ids, open(paths["svmlite"], "w", encoding="utf-8") as out_svm:
-            for idx, (row, label, title) in enumerate(zip(rows, labels, titles), start=1):
+            for idx, (row, label, title) in enumerate(zip(featured.rows, featured.labels, featured.titles), start=1):
                 out_labels.write(f"{int(label)}\n")
                 out_ids.write(f"{idx}\t{title}\n")
                 write_svmlite_row(int(label), row, out_svm)
 
         with open(paths["labels"], "r", encoding="utf-8") as lf:
             n_labels = sum(1 for _ in lf)
-        if n_labels != len(rows):
+        if n_labels != len(featured.rows):
             raise RuntimeError(
-                f"Label count mismatch: expected {len(rows)} rows but found {n_labels} in {paths['labels']}."
+                f"Label count mismatch: expected {len(featured.rows)} rows but found {n_labels} in {paths['labels']}."
             )
 
-        return paths
+        featured.artifact_paths = paths
+        return featured
 
     def run_feature_extraction(self) -> Dict[str, Dict[str, str]]:
         if "train" not in self.config.data.splits:
@@ -316,26 +305,26 @@ class FeaturePipeline:
         artifacts: Dict[str, Dict[str, str]] = {}
 
         print("Extracting train split (fit + transform)...")
-        train_papers = self._load_split_papers("train")
-        train_rows, train_labels, train_titles, dropped = self.fit_transform(train_papers)
-        if dropped:
-            print(f"Dropped leakage-like features on train: {sorted(dropped)}")
-        train_out_dir = os.path.join(self.config.data.combined_dir, "train", self.config.data.output_subdir)
-        artifacts["train"] = self._write_artifacts(train_out_dir, train_rows, train_labels, train_titles)
+        train_loaded = self.load_data("train")
+        train_processed = self.preprocess(train_loaded)
+        train_featured = self.featureize(train_processed, fit_mode=True)
+        train_featured = self._write_artifacts(train_featured)
+        if train_featured.dropped_features:
+            print(f"Dropped leakage-like features on train: {sorted(train_featured.dropped_features)}")
+        artifacts["train"] = train_featured.artifact_paths
 
-        feature_map_path = self._feature_map_path()
-        save_features_to_file(self.id_to_feature, feature_map_path)
+        save_features_to_file(self.id_to_feature, self._feature_map_path())
 
         for split in self.config.data.splits:
             if split == "train":
                 continue
             print(f"Extracting {split} split (transform only)...")
-            split_papers = self._load_split_papers(split)
-            rows, labels, titles, dropped = self.transform(split_papers)
-            if dropped:
-                print(f"Dropped leakage-like features on {split}: {sorted(dropped)}")
-            split_out_dir = os.path.join(self.config.data.combined_dir, split, self.config.data.output_subdir)
-            artifacts[split] = self._write_artifacts(split_out_dir, rows, labels, titles)
+            loaded = self.load_data(split)
+            featured = self.transform(loaded)
+            featured = self._write_artifacts(featured)
+            if featured.dropped_features:
+                print(f"Dropped leakage-like features on {split}: {sorted(featured.dropped_features)}")
+            artifacts[split] = featured.artifact_paths
 
         return artifacts
 
@@ -425,7 +414,11 @@ class FeaturePipeline:
         hyperparams = spec.get("hyperparams", {})
         return model_cls(**hyperparams)
 
-    def _train_eval_candidate(
+    def fit(self, model: Any, X_train: np.ndarray, y_train: np.ndarray) -> Any:
+        model.fit(X_train, y_train)
+        return model
+
+    def eval(
         self,
         name: str,
         model: Any,
@@ -436,7 +429,7 @@ class FeaturePipeline:
         X_test: np.ndarray,
         y_test: np.ndarray,
     ) -> Tuple[Dict[str, Any], np.ndarray, np.ndarray]:
-        model.fit(X_train, y_train)
+        model = self.fit(model, X_train, y_train)
         dev_proba = model.predict_proba(X_dev)[:, 1]
         best_t, dev_best_f1 = self._pick_threshold(y_dev, dev_proba)
 
@@ -483,7 +476,7 @@ class FeaturePipeline:
             Xt, Xd, Xte = (X_train_scaled, X_dev_scaled, X_test_scaled) if requires_scaling else (X_train, X_dev, X_test)
 
             print(f"Training {name}...")
-            result, dev_proba, test_proba = self._train_eval_candidate(name, model, Xt, y_train, Xd, y_dev, Xte, y_test)
+            result, dev_proba, test_proba = self.eval(name, model, Xt, y_train, Xd, y_dev, Xte, y_test)
             results.append(result)
             model_dev_proba[name] = dev_proba
             model_test_proba[name] = test_proba
@@ -535,7 +528,7 @@ class FeaturePipeline:
     def load_feature_map(self) -> None:
         feature_map_path = self._feature_map_path()
         self.id_to_feature = read_features(feature_map_path)
-        self.is_fitted = True
+        self.is_feature_fitted = True
 
     def run(self) -> Dict[str, Any]:
         extraction_artifacts = self.run_feature_extraction()

@@ -4,8 +4,8 @@ This repository provides a config-driven machine learning pipeline for paper acc
 
 The workflow is now centered around a single JSON config file and a sklearn-like pipeline class:
 
-- `Config(...)` in `DataPipeline/config.py`
-- `FeaturePipeline(...)` in `DataPipeline/feature_pipeline.py`
+- `Config(...)` in `DataPipeline/config/pipeline_config.py`
+- `FeaturePipeline(...)` in `DataPipeline/config/feature_pipeline.py`
 
 The pipeline supports:
 
@@ -24,9 +24,9 @@ Primary scripts:
 
 Core implementation:
 
-- `DataPipeline/config.py`: config schema and JSON parsing
-- `DataPipeline/feature_pipeline.py`: end-to-end pipeline logic
-- `DataPipeline/feature_extraction.py`: feature definitions
+- `DataPipeline/config/pipeline_config.py`: config schema and JSON parsing
+- `DataPipeline/config/feature_pipeline.py`: end-to-end pipeline logic
+- `DataPipeline/feature/feature_extraction.py`: feature definitions
 
 ## 2. Environment Setup
 
@@ -64,7 +64,7 @@ python train_models.py pipeline_config.json
 
 ```python
 from DataPipeline.config import Config
-from DataPipeline.feature_pipeline import FeaturePipeline
+from DataPipeline.config.feature_pipeline import FeaturePipeline
 
 cfg = Config("pipeline_config.json")
 pipeline = FeaturePipeline(cfg)
@@ -292,7 +292,7 @@ Notes:
 
 ## 7. Feature Groups (Current)
 
-The current hand-crafted feature set (from `DataPipeline/feature_extraction.py`) includes:
+The current hand-crafted feature set (from `DataPipeline/feature/feature_extraction.py`) includes:
 
 1. Abstract keyword flags
 2. Citation counts and recency
@@ -348,7 +348,7 @@ Or in one Python call:
 
 ```python
 from DataPipeline.config import Config
-from DataPipeline.feature_pipeline import FeaturePipeline
+from DataPipeline.config.feature_pipeline import FeaturePipeline
 
 cfg = Config("pipeline_config.json")
 result = FeaturePipeline(cfg).run()

@@ -2,12 +2,8 @@ import os
 import glob
 from typing import List
 
-try:
-    from .models.Paper import Paper
-    from .models.ScienceParseReader import ScienceParseReader
-except ImportError:
-    from models.Paper import Paper
-    from models.ScienceParseReader import ScienceParseReader
+from ..domain.Paper import Paper
+from .science_parse_reader import ScienceParseReader
 
 def load_papers_from_dir(paper_json_dir: str, scienceparse_dir: str) -> List[Paper]:
     """
@@ -20,7 +16,6 @@ def load_papers_from_dir(paper_json_dir: str, scienceparse_dir: str) -> List[Pap
     Returns:
         List[Paper]: List of instantiated Paper objects with loaded science parses.
     """
-    paper_content_corpus = []
     paper_json_filenames = sorted(glob.glob(os.path.join(paper_json_dir, '*.json')))
     papers = []
     
