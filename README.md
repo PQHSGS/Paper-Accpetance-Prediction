@@ -4,7 +4,7 @@ This repository provides a config-driven machine learning pipeline for paper acc
 
 The workflow is now centered around a single JSON config file and a sklearn-like pipeline class:
 
-- `Config(...)` in `DataPipeline/config/pipeline_config.py`
+- `Config(...)` in `DataPipeline/config/pipeline.py`
 - `FeaturePipeline(...)` in `DataPipeline/feature_pipeline.py`
 
 The pipeline supports:
@@ -24,7 +24,7 @@ Primary scripts:
 
 Core implementation:
 
-- `DataPipeline/config/pipeline_config.py`: config schema and JSON parsing
+- `DataPipeline/config/pipeline.py`: config schema and JSON parsing
 - `DataPipeline/feature_pipeline.py`: end-to-end pipeline logic
 - `DataPipeline/feature/handcrafted.py`: feature definitions
 
@@ -116,6 +116,7 @@ Controls text normalization and corpus frequency bucket creation.
 
 Fields:
 
+- `methods`: ordered data-preprocess method list (default: `build_corpus_words`, `compute_frequency_buckets`)
 - `only_char`: keep alphanumeric tokens only
 - `lower`: lowercase text
 - `stop_remove`: remove English stopwords
@@ -127,6 +128,10 @@ Example:
 
 ```json
 "PreprocessConfig": {
+  "methods": [
+    "build_corpus_words",
+    "compute_frequency_buckets"
+  ],
   "only_char": true,
   "lower": true,
   "stop_remove": true,
@@ -174,7 +179,7 @@ Fields:
 
 - `enabled`: run training stage
 - `data_dir`: optional override for feature artifact folder; if null uses `DataConfig.combined_dir`
-- `preprocess_methods`: ordered list of matrix preprocess transforms for training (default: `standardize_for_linear_models`)
+- `preprocess_methods`: ordered feature-matrix preprocess method list (default: `standardize_for_linear_models`)
 - `standardize_linear_models`: backward-compatible on/off switch used by `standardize_for_linear_models`
 - `threshold_min`: lower bound for fixed threshold grid
 - `threshold_max`: upper bound for fixed threshold grid
@@ -270,6 +275,24 @@ Edit:
 Edit the `TrainingConfig.model_candidates` list.
 
 Each entry maps directly to a model constructor in `Models/` via `FeaturePipeline` model registry.
+
+## 5.6 Pipeline Stage Methods
+
+`FeaturePipeline` exposes readable stage methods aligned with execution flow:
+
+1. `load_raw_data(split)`
+2. `preprocess_data(process_data)`
+3. `extract_features(process_data, fit_mode)`
+4. `load_features()`
+5. `train(loaded_features=None)`
+6. `predict_proba(model, X)` / `predict_labels(probabilities, threshold)`
+7. `eval(name, model, X_dev, y_dev, X_test, y_test)`
+
+Internal preprocess registries are split by domain:
+
+- data preprocess registry: `DataPipeline/preprocess/__init__.py` via `get_data_preprocess_methods`
+- feature-matrix preprocess registry: `DataPipeline/preprocess/__init__.py` via `get_feature_preprocess_methods`
+- default feature transform implementation: `DataPipeline/preprocess/feature_transform.py`
 
 ## 6. Output Artifacts
 
