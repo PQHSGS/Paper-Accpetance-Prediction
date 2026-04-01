@@ -1,7 +1,7 @@
 import sys
 
 from DataPipeline.config import Config
-from DataPipeline.config.feature_pipeline import FeaturePipeline
+from DataPipeline.feature_pipeline import FeaturePipeline
 
 
 def main(argv: list[str]) -> int:

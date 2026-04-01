@@ -1,6 +1,6 @@
 from .data import DataConfig
 from .feature import FeatureConfig
-from .pipeline_config import PipelineConfig
+from .pipeline import PipelineConfig
 from .preprocess import PreprocessConfig
 from .training import TrainingConfig
 

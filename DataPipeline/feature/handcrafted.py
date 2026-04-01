@@ -3,9 +3,30 @@ from typing import TYPE_CHECKING, Any, Dict, List, Set, Tuple
 
 import numpy as np
 
+from .science_parse_features import (
+    get_avg_length_reference_mention_contexts,
+    get_avg_sentence_length,
+    get_contains_appendix,
+    get_content_words,
+    get_frequent_words_proportion,
+    get_num_authors,
+    get_num_recent_references,
+    get_num_ref_to_equations,
+    get_num_ref_to_figures,
+    get_num_ref_to_sections,
+    get_num_ref_to_tables,
+    get_num_ref_to_theorems,
+    get_num_references,
+    get_num_refmentions,
+    get_num_sections,
+    get_num_uniq_words,
+    get_reference_years_dict,
+    get_sections_dict,
+)
+
 if TYPE_CHECKING:
     from ..config.feature import FeatureConfig
-    from ..pipeline_data import ProcessData
+    from ..entities import ProcessData
 
 
 def count_words(corpus: List[str], hfw_proportion: float, freq_proportion: float, min_freq_thr: int) -> Tuple[List[str], Set[str], Set[str]]:
@@ -43,21 +64,21 @@ def extract_hand_features(paper: Any, science_parse: Any, hfws: List[str], freq_
     Returns:
         Mapping of feature names to values.
     """
-    num_references = science_parse.get_num_references()
-    num_refmentions = science_parse.get_num_refmentions()
-    num_sections = science_parse.get_num_sections()
-    num_uniq_words = science_parse.get_num_uniq_words()
-    total_words = max(1, len(science_parse.get_content_words()))
+    num_references = get_num_references(science_parse)
+    num_refmentions = get_num_refmentions(science_parse)
+    num_sections = get_num_sections(science_parse)
+    num_uniq_words = get_num_uniq_words(science_parse)
+    total_words = max(1, len(get_content_words(science_parse)))
 
-    num_recent_references = science_parse.get_num_recent_references(2017)
-    num_ref_to_figures = science_parse.get_num_ref_to_figures()
-    num_ref_to_tables = science_parse.get_num_ref_to_tables()
-    num_ref_to_sections = science_parse.get_num_ref_to_sections()
-    num_ref_to_equations = science_parse.get_num_ref_to_equations()
-    num_ref_to_theorems = science_parse.get_num_ref_to_theorems()
+    num_recent_references = get_num_recent_references(science_parse, 2017)
+    num_ref_to_figures = get_num_ref_to_figures(science_parse)
+    num_ref_to_tables = get_num_ref_to_tables(science_parse)
+    num_ref_to_sections = get_num_ref_to_sections(science_parse)
+    num_ref_to_equations = get_num_ref_to_equations(science_parse)
+    num_ref_to_theorems = get_num_ref_to_theorems(science_parse)
 
     reference_years = [
-        y for y in science_parse.get_reference_years_dict().values()
+        y for y in get_reference_years_dict(science_parse).values()
         if isinstance(y, int) and 1900 <= y <= 2025
     ]
     if reference_years:
@@ -70,7 +91,7 @@ def extract_hand_features(paper: Any, science_parse: Any, hfws: List[str], freq_
         median_reference_age = 0.0
         frac_recent_refs = 0.0
 
-    section_titles = [str(k).lower() for k in science_parse.get_sections_dict().keys()]
+    section_titles = [str(k).lower() for k in get_sections_dict(science_parse).keys()]
     has_related_work = int(any("related" in s and "work" in s for s in section_titles))
     has_experiments = int(any("experiment" in s or "evaluation" in s for s in section_titles))
     has_conclusion = int(any("conclusion" in s for s in section_titles))
@@ -85,7 +106,7 @@ def extract_hand_features(paper: Any, science_parse: Any, hfws: List[str], freq_
         # Core paper/reference signals.
         "get_num_references": num_references,
         "get_num_refmentions": num_refmentions,
-        "get_avg_length_reference_mention_contexts": science_parse.get_avg_length_reference_mention_contexts(),
+        "get_avg_length_reference_mention_contexts": get_avg_length_reference_mention_contexts(science_parse),
         "get_num_recent_references": num_recent_references,
         "get_num_ref_to_figures": num_ref_to_figures,
         "get_num_ref_to_tables": num_ref_to_tables,
@@ -95,11 +116,11 @@ def extract_hand_features(paper: Any, science_parse: Any, hfws: List[str], freq_
         # Raw structure/lexical features.
         "get_num_uniq_words": num_uniq_words,
         "get_num_sections": num_sections,
-        "get_avg_sentence_length": science_parse.get_avg_sentence_length(),
-        "get_contains_appendix": science_parse.get_contains_appendix(),
-        "proportion_of_frequent_words": round(science_parse.get_frequent_words_proportion(hfws, freq_words, infreq_words), 3),
+        "get_avg_sentence_length": get_avg_sentence_length(science_parse),
+        "get_contains_appendix": get_contains_appendix(science_parse),
+        "proportion_of_frequent_words": round(get_frequent_words_proportion(science_parse, hfws, freq_words, infreq_words), 3),
         "get_title_length": paper.get_title_len(),
-        "get_num_authors": science_parse.get_num_authors(),
+        "get_num_authors": get_num_authors(science_parse),
         # Robust keyword indicators.
         "abstract_contains_deep": int(paper.abstract_contains_a_term("deep")),
         "abstract_contains_neural": int(paper.abstract_contains_a_term("neural")),

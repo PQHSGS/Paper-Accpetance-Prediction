@@ -3,11 +3,12 @@ from typing import TYPE_CHECKING, Any
 
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
+from ..feature.science_parse_features import get_paper_content
 
 if TYPE_CHECKING:
     from ..config.feature import FeatureConfig
     from ..config.preprocess import PreprocessConfig
-    from ..pipeline_data import ProcessData
+    from ..entities import ProcessData
 
 # Cache stopwords once at module level (avoids reloading from disk per call)
 _STOP_WORDS = set(stopwords.words("english"))
@@ -64,7 +65,7 @@ def build_corpus_words(
     else:
         corpus_words = []
         for paper in data.papers:
-            content = paper.SCIENCEPARSE.get_paper_content()
+            content = get_paper_content(paper.SCIENCEPARSE)
             norm = normalize_text(
                 content,
                 only_char=preprocess_config.only_char,
@@ -86,7 +87,7 @@ def compute_frequency_buckets(
     context: dict[str, Any],
 ) -> "ProcessData":
     """Compute high/moderate/low-frequency word buckets from corpus words."""
-    from ..feature.feature_extraction import count_words
+    from ..feature.handcrafted import count_words
 
     _ = feature_config  # kept for future extensibility in signature parity.
     _ = context

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .common import _coerce_bool, _split_known
+from .common import _coerce_bool, _coerce_str_list, _split_known
 
 
 def _default_model_candidates() -> List[Dict[str, Any]]:
@@ -85,6 +85,9 @@ def _default_model_candidates() -> List[Dict[str, Any]]:
 class TrainingConfig:
     enabled: bool = True
     data_dir: Optional[str] = None
+    preprocess_methods: List[str] = field(default_factory=lambda: [
+        "standardize_for_linear_models",
+    ])
     standardize_linear_models: bool = True
     threshold_min: float = 0.2
     threshold_max: float = 0.8
@@ -100,6 +103,7 @@ class TrainingConfig:
         known_keys = {
             "enabled",
             "data_dir",
+            "preprocess_methods",
             "standardize_linear_models",
             "threshold_min",
             "threshold_max",
@@ -109,9 +113,17 @@ class TrainingConfig:
             "model_candidates",
         }
         known, extra = _split_known(data, known_keys)
+        has_preprocess_methods = "preprocess_methods" in known
+        if has_preprocess_methods:
+            known["preprocess_methods"] = _coerce_str_list(
+                known["preprocess_methods"],
+                "TrainingConfig.preprocess_methods",
+            )
         for bool_key in ("enabled", "standardize_linear_models", "use_probability_midpoints"):
             if bool_key in known:
                 known[bool_key] = _coerce_bool(known[bool_key])
         cfg = cls(**known)
+        if not has_preprocess_methods and not cfg.standardize_linear_models:
+            cfg.preprocess_methods = []
         cfg.extra = extra
         return cfg

@@ -1,4 +1,4 @@
-import re,io,json,sys
+import io,json,sys
 from .Review import Review
 
 class Paper:
@@ -7,7 +7,7 @@ class Paper:
          PUBLICATION_TYPE=None, SCIENCEPARSE=None, KEYWORDS=None, AUTHOR_EMAILS=None, DATE_OF_SUBMISSION=None,
          SUBJECTS=None,COMMENTS=None,VERSION=None,HISTORIES=None):
     self.TITLE = TITLE
-    self.ABSTRACT = re.sub("\\n", " ", ABSTRACT)
+    self.ABSTRACT = ABSTRACT
     self.ID = ID
     self.AUTHORS = AUTHORS
     self.REVIEWS = REVIEWS

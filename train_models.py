@@ -1,7 +1,7 @@
 import sys
 
 from DataPipeline.config import Config
-from DataPipeline.config.feature_pipeline import FeaturePipeline
+from DataPipeline.feature_pipeline import FeaturePipeline
 
 
 def main(argv: list[str]) -> int:
@@ -11,7 +11,7 @@ def main(argv: list[str]) -> int:
 
     cfg = Config(argv[1])
     pipeline = FeaturePipeline(config=cfg)
-    pipeline.run_training()
+    pipeline.train()
     return 0
 
 

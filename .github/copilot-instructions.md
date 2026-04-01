@@ -61,7 +61,7 @@
 - `run_combined_extraction.py`
 - `train_models.py`
 - `DataPipeline/config/pipeline_config.py`
-- `DataPipeline/config/feature_pipeline.py`
-- `DataPipeline/feature/feature_extraction.py`
+- `DataPipeline/feature_pipeline.py`
+- `DataPipeline/feature/handcrafted.py`
 - `Models/base.py`
 - `Models/decision_tree.py`

@@ -5,7 +5,7 @@ This repository provides a config-driven machine learning pipeline for paper acc
 The workflow is now centered around a single JSON config file and a sklearn-like pipeline class:
 
 - `Config(...)` in `DataPipeline/config/pipeline_config.py`
-- `FeaturePipeline(...)` in `DataPipeline/config/feature_pipeline.py`
+- `FeaturePipeline(...)` in `DataPipeline/feature_pipeline.py`
 
 The pipeline supports:
 
@@ -25,8 +25,8 @@ Primary scripts:
 Core implementation:
 
 - `DataPipeline/config/pipeline_config.py`: config schema and JSON parsing
-- `DataPipeline/config/feature_pipeline.py`: end-to-end pipeline logic
-- `DataPipeline/feature/feature_extraction.py`: feature definitions
+- `DataPipeline/feature_pipeline.py`: end-to-end pipeline logic
+- `DataPipeline/feature/handcrafted.py`: feature definitions
 
 ## 2. Environment Setup
 
@@ -64,7 +64,7 @@ python train_models.py pipeline_config.json
 
 ```python
 from DataPipeline.config import Config
-from DataPipeline.config.feature_pipeline import FeaturePipeline
+from DataPipeline.feature_pipeline import FeaturePipeline
 
 cfg = Config("pipeline_config.json")
 pipeline = FeaturePipeline(cfg)
@@ -174,7 +174,8 @@ Fields:
 
 - `enabled`: run training stage
 - `data_dir`: optional override for feature artifact folder; if null uses `DataConfig.combined_dir`
-- `standardize_linear_models`: currently informational; scaling is selected per model candidate via `requires_scaling`
+- `preprocess_methods`: ordered list of matrix preprocess transforms for training (default: `standardize_for_linear_models`)
+- `standardize_linear_models`: backward-compatible on/off switch used by `standardize_for_linear_models`
 - `threshold_min`: lower bound for fixed threshold grid
 - `threshold_max`: upper bound for fixed threshold grid
 - `threshold_steps`: number of points in fixed threshold grid
@@ -195,6 +196,7 @@ Example:
 "TrainingConfig": {
   "enabled": true,
   "data_dir": null,
+  "preprocess_methods": ["standardize_for_linear_models"],
   "use_probability_midpoints": true,
   "ensemble_top_k": 3,
   "model_candidates": [
@@ -292,7 +294,7 @@ Notes:
 
 ## 7. Feature Groups (Current)
 
-The current hand-crafted feature set (from `DataPipeline/feature/feature_extraction.py`) includes:
+The current hand-crafted feature set (from `DataPipeline/feature/handcrafted.py`) includes:
 
 1. Abstract keyword flags
 2. Citation counts and recency
@@ -348,7 +350,7 @@ Or in one Python call:
 
 ```python
 from DataPipeline.config import Config
-from DataPipeline.config.feature_pipeline import FeaturePipeline
+from DataPipeline.feature_pipeline import FeaturePipeline
 
 cfg = Config("pipeline_config.json")
 result = FeaturePipeline(cfg).run()

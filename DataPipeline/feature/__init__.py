@@ -1,7 +1,7 @@
 from typing import Callable, List
 
-from .feature_extraction import count_words, extract_hand_features, handcrafted_features
-from .reporting import read_features, save_features_to_file, write_svmlite_row
+from .artifact_io import read_features, save_features_to_file, write_svmlite_row
+from .handcrafted import count_words, extract_hand_features, handcrafted_features
 
 FEATURE_METHODS: dict[str, Callable] = {
     "handcrafted_features": handcrafted_features,
