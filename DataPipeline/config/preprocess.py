@@ -16,6 +16,10 @@ class PreprocessConfig:
     hfw_proportion: float = 0.01
     freq_proportion: float = 0.05
     min_freq_threshold: int = 3
+    allow_recommendation_fallback: bool = True
+    recommendation_threshold: float = 3.5
+    preserve_corpus_cache: bool = True
+    shuffle_seed: int = 42
     extra: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -29,11 +33,21 @@ class PreprocessConfig:
             "hfw_proportion",
             "freq_proportion",
             "min_freq_threshold",
+            "allow_recommendation_fallback",
+            "recommendation_threshold",
+            "preserve_corpus_cache",
+            "shuffle_seed",
         }
         known, extra = _split_known(data, known_keys)
         if "methods" in known:
             known["methods"] = _coerce_str_list(known["methods"], "PreprocessConfig.methods")
-        for bool_key in ("only_char", "lower", "stop_remove"):
+        for bool_key in (
+            "only_char",
+            "lower",
+            "stop_remove",
+            "allow_recommendation_fallback",
+            "preserve_corpus_cache",
+        ):
             if bool_key in known:
                 known[bool_key] = _coerce_bool(known[bool_key])
         cfg = cls(**known)

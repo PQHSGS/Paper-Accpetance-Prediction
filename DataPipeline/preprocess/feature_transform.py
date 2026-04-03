@@ -19,9 +19,8 @@ def standardize_for_linear_models(
     This transform is intended for linear models and is configured through
     TrainingConfig.preprocess_methods.
     """
+    _ = training_config
     _ = context
-    if not training_config.standardize_linear_models:
-        return matrices
 
     x_train, x_dev, x_test = matrices
     mean = x_train.mean(axis=0)

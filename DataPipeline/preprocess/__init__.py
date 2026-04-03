@@ -1,7 +1,6 @@
 from typing import Callable, List
 
 from .normalization import build_corpus_words, compute_frequency_buckets, normalize_text
-from .loading import LabelResolver, load_split_data
 from .parsing import load_papers_from_dir, read_science_parse
 from .feature_transform import standardize_for_linear_models
 
@@ -42,8 +41,6 @@ __all__ = [
 	"normalize_text",
 	"build_corpus_words",
 	"compute_frequency_buckets",
-    "LabelResolver",
-    "load_split_data",
 	"load_papers_from_dir",
     "read_science_parse",
 	"DATA_PREPROCESS_METHODS",

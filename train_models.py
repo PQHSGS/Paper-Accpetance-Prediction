@@ -11,7 +11,7 @@ def main(argv: list[str]) -> int:
 
     cfg = Config(argv[1])
     pipeline = FeaturePipeline(config=cfg)
-    pipeline.train()
+    pipeline.run(extract_features=False)
     return 0
 
 

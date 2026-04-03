@@ -10,11 +10,7 @@ class FeatureConfig:
     max_vocab: Union[bool, int] = False
     encoder_type: Union[bool, str] = "w2v"
     use_hand_features: bool = True
-    allow_recommendation_fallback: bool = True
-    recommendation_threshold: float = 3.5
     drop_post_review_leakage: bool = True
-    preserve_corpus_cache: bool = True
-    shuffle_seed: int = 42
     extra: Dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -37,11 +33,7 @@ class FeatureConfig:
             "max_vocab",
             "encoder_type",
             "use_hand_features",
-            "allow_recommendation_fallback",
-            "recommendation_threshold",
             "drop_post_review_leakage",
-            "preserve_corpus_cache",
-            "shuffle_seed",
         }
         known, extra = _split_known(data, known_keys)
 
@@ -50,12 +42,7 @@ class FeatureConfig:
 
         if "max_vocab" in known:
             known["max_vocab"] = _coerce_bool_or_int(known["max_vocab"])
-        for bool_key in (
-            "use_hand_features",
-            "allow_recommendation_fallback",
-            "drop_post_review_leakage",
-            "preserve_corpus_cache",
-        ):
+        for bool_key in ("use_hand_features", "drop_post_review_leakage"):
             if bool_key in known:
                 known[bool_key] = _coerce_bool(known[bool_key])
 

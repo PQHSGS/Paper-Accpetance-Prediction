@@ -31,6 +31,12 @@ def _coerce_str_list(value: Any, field_name: str) -> List[str]:
     raise ValueError(f"Expected list[str] for {field_name}, got: {value!r}")
 
 
+def _coerce_str(value: Any, field_name: str) -> str:
+    if isinstance(value, str):
+        return value
+    raise ValueError(f"Expected str for {field_name}, got: {value!r}")
+
+
 def _split_known(d: Dict[str, Any], known_keys: set[str]) -> tuple[Dict[str, Any], Dict[str, Any]]:
     known: Dict[str, Any] = {}
     extra: Dict[str, Any] = {}

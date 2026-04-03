@@ -59,7 +59,7 @@ def build_corpus_words(
     os.makedirs(cache_dir, exist_ok=True)
     corpus_path = os.path.join(cache_dir, "corpus.pkl")
 
-    if feature_config.preserve_corpus_cache and os.path.exists(corpus_path):
+    if preprocess_config.preserve_corpus_cache and os.path.exists(corpus_path):
         with open(corpus_path, "rb") as f:
             corpus_words = pkl.load(f)
     else:
